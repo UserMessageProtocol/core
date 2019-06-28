@@ -1,35 +1,37 @@
 package com.somecoders.uim.transport.UNS;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioDatagramChannel;
+
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.net.*;
-import java.io.IOException;
 
 public class Broadcaster {
-    private UserIpStrack userIpStrack;
-
-    static public void broadcast(int shortId, ArrayList<InetAddress> ips) {
+    static public void broadcast(int shortId, ArrayList<InetSocketAddress> ips) {
         try {
+            final NioEventLoopGroup group = new NioEventLoopGroup();
+            Bootstrap bootstrap = new Bootstrap();
+            bootstrap.group(group)
+                .channel(NioDatagramChannel.class)
+                .option(ChannelOption.SO_BROADCAST, true)
+                .handler(new Encoder());
+            Channel ch = bootstrap.bind(0).syncUninterruptibly().channel();
             for (int i = 0; i < ips.size(); i++) {
-                DatagramSocket socket = new DatagramSocket();
-                byte[] buffer = ("short id :" + shortId).getBytes();
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length, ips.get(i), 33251);
-                System.out.print("send start");
-                System.out.print(ips.get(i));
-                socket.send(packet);
-                System.out.print(buffer.toString());
+                ch.writeAndFlush(new UNSData(ips.get(i), shortId));
             }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        } catch (UnknownHostException e) {
-
-        } catch (IOException e) {
-
+            group.shutdownGracefully();
+        } finally {
+            System.out.println("broadcast ok");
         }
     }
 
     public static void main(String[] args) throws Exception {
-        ArrayList<InetAddress> ips = new ArrayList<InetAddress>();
-        ips.add(InetAddress.getLocalHost());
+        ArrayList<InetSocketAddress> ips = new ArrayList<InetSocketAddress>();
+//        ips.add(new InetSocketAddress(33251));
+        ips.add(new InetSocketAddress(33221));
         Broadcaster.broadcast(666, ips);
     }
 }

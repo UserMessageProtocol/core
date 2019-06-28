@@ -9,6 +9,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 public class Server {
     private Integer port;
@@ -22,22 +23,25 @@ public class Server {
     public void start()  {
         try {
             this.bootstrap = new Bootstrap();
+            InetSocketAddress address = new InetSocketAddress(this.port);
             final NioEventLoopGroup group = new NioEventLoopGroup();
             this.bootstrap.group(group).channel(NioDatagramChannel.class)
                 .option(ChannelOption.SO_BROADCAST, true)
                 .handler(new ChannelInitializer<NioDatagramChannel>() {
                     @Override
-                    public void initChannel(final NioDatagramChannel ch) throws Exception {
+                    public void initChannel(final NioDatagramChannel ch) {
                         ChannelPipeline p = ch.pipeline();
+//                        p.addLast(new Encoder());
                         p.addLast(new Decoder());
                         p.addLast(new ServerHandler());
-                        System.out.print("bind ok");
                     }
-                });
+                }).localAddress(address);
 
-            this.udpChannel = this.bootstrap.bind(this.port).sync().channel();
+            this.udpChannel = this.bootstrap.bind().syncUninterruptibly().channel();
             System.out.print("Server start");
+            System.out.print(address);
             this.udpChannel.closeFuture().await();
+            System.out.print("Server Finally");
         } catch (InterruptedException e) {
 
         } finally {
@@ -46,6 +50,6 @@ public class Server {
     }
 
     public static void main(String[] args) throws Exception {
-        new Server(33251).start();
+        new Server(33221).start();
     }
 }
